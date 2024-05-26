@@ -35,7 +35,7 @@ for (let i = 0; i < 1000; i++) {
 await Promise.all(rpcs);
 
 // Print returned values.
-console.log(rpcs)
+console.log(rpcs);
 
 // Terminate workers.
 pool.terminate();
