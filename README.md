@@ -4,8 +4,8 @@ A simple, type-safe, performant and dependency free worker pool library.
 
 ## Contributing
 
-If you want to contribute to `workerpool` to add a feature or improve the code contact
-me at [alexandre@negrel.dev](mailto:alexandre@negrel.dev), open an
+If you want to contribute to `workerpool` to add a feature or improve the code
+contact me at [alexandre@negrel.dev](mailto:alexandre@negrel.dev), open an
 [issue](https://github.com/negrel/workerpool/issues) or make a
 [pull request](https://github.com/negrel/workerpool/pulls).
 
