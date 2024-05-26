@@ -18,6 +18,9 @@ export interface WorkerPoolOptions {
   maxTasksPerWorker: number;
 }
 
+/**
+ * WorkerPool is a performant and extensible worker pool.
+ */
 export class WorkerPool {
   private readonly workers: RpcWorker[] = [];
   // deno-lint-ignore no-explicit-any
