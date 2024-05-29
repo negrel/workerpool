@@ -16,6 +16,18 @@ export function workerProcedureHandler(
     try {
       const procedure = procedures[event.data.name];
       if (typeof procedure !== "function") {
+        // WorkerScript may not implement setupWorker.
+        if (event.data.name == "setupWorker") {
+          self.postMessage(
+            {
+              id: event.data.id,
+              result: undefined,
+            },
+            [],
+          );
+          return;
+        }
+
         throw new Error(`procedure "${event.data.name}" doesn't exist`);
       }
 

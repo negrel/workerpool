@@ -50,7 +50,7 @@ let workerId = null;
 
 self.onmessage = workerProcedureHandler(
   {
-    // Called by worker pool.
+    // Called by worker pool (optional).
     setupWorker(wId) {
       workerId = wId;
     },
