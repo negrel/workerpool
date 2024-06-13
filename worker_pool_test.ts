@@ -6,6 +6,7 @@ Deno.test("worker pool produce no duplicate worker id", async () => {
   const poolOptions = {
     workerFactory: new WebWorkerFactory(
       new URL("./test_workers/worker_id.ts", import.meta.url),
+      { type: "module" },
     ),
     minWorker: 1,
     maxWorker: 4,
@@ -42,6 +43,7 @@ Deno.test("worker pool doesn't create worker if existing worker aren't full", as
   const poolOptions = {
     workerFactory: new WebWorkerFactory(
       new URL("./test_workers/worker_id.ts", import.meta.url),
+      { type: "module" },
     ),
     minWorker: 1,
     maxWorker: 4,
@@ -73,6 +75,7 @@ Deno.test("worker pool enqueue task if all workers are full", async () => {
   const poolOptions = {
     workerFactory: new WebWorkerFactory(
       new URL("./test_workers/worker_id.ts", import.meta.url),
+      { type: "module" },
     ),
     minWorker: 1,
     maxWorker: 2,
@@ -114,6 +117,7 @@ Deno.test("worker pool creates up to minWorker workers even if workers aren't fu
   const poolOptions = {
     workerFactory: new WebWorkerFactory(
       new URL("./test_workers/worker_id.ts", import.meta.url),
+      { type: "module" },
     ),
     minWorker: 2,
     maxWorker: 4,

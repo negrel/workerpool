@@ -104,13 +104,15 @@ export class WebWorker implements RpcWorker {
  */
 export class WebWorkerFactory implements RpcWorkerFactory {
   private readonly moduleUrl: URL;
+  private readonly options?: WorkerOptions;
 
-  constructor(moduleUrl: URL) {
+  constructor(moduleUrl: URL, options?: WorkerOptions) {
     this.moduleUrl = moduleUrl;
+    this.options = options;
   }
 
   createWorker(): RpcWorker {
-    return new WebWorker(this.moduleUrl, { type: "module" });
+    return new WebWorker(this.moduleUrl, this.options);
   }
 
   terminateWorker(rpcWorker: RpcWorker) {

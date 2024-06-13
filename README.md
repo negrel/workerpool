@@ -15,6 +15,7 @@ import { WebWorkerFactory, WorkerPool } from "jsr:@negrel/workerpool";
 const pool = new WorkerPool({
   workerFactory: new WebWorkerFactory(
     new URL("./worker_script.js", import.meta.url),
+    { type: "module" }
   ),
   minWorker: 0,
   maxWorker: 8,
