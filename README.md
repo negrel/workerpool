@@ -4,31 +4,38 @@ A simple, type-safe, performant and dependency free worker pool library.
 
 ## Usage
 
-In `main.js`:
+In `main.ts`:
 
-```js
-import { WebWorkerFactory, WorkerPool } from "jsr:@negrel/workerpool";
+```ts
+import {
+  minMaxWorker,
+  WorkerPool,
+  workerRpcClientFactory,
+} from "jsr:@negrel/workerpool";
 
-// Create a worker pool that will execute worker_script.js using up to 8 Web
-// Worker.
+// Create a worker pool that will execute worker_script.js using up to 8 Worker.
 // With the given configuration, at most 800 (8 * 100) tasks can run concurrently.
 const pool = new WorkerPool({
-  workerFactory: new WebWorkerFactory(
-    new URL("./worker_script.js", import.meta.url),
+  workerFactory: workerRpcClientFactory(
+    new URL("./worker_script.ts", import.meta.url),
     { type: "module" },
   ),
-  minWorker: 0,
-  maxWorker: 8,
-  maxTasksPerWorker: 100,
+  algo: minMaxWorker({
+    maxWorker: 8,
+    tasksPerWorker: {
+      min: 0,
+      max: 100,
+    },
+  }),
 });
 
-const rpcs = [];
+const rpcs: Promise<number>[] = [];
 
 // Create 1000 tasks.
 for (let i = 0; i < 1000; i++) {
-  rpcs.push(pool.remoteProcedureCall({
+  rpcs.push(pool.remoteProcedureCall<number, number>({
     name: "doExtensiveWork",
-    args: { i },
+    args: i,
   }));
 }
 
@@ -42,21 +49,17 @@ console.log(rpcs);
 pool.terminate();
 ```
 
-In `worker_script.js`:
+In `worker_script.ts`:
 
 ```js
-import { workerProcedureHandler } from "jsr:@negrel/workerpool";
+import { workerMessageHandler } from "jsr:@negrel/workerpool";
 
-let workerId = null;
+declare const self: Worker;
 
-self.onmessage = workerProcedureHandler(
+self.onmessage = workerMessageHandler(
   {
-    // Called by worker pool (optional).
-    setupWorker(wId) {
-      workerId = wId;
-    },
     doExtensiveWork(...args) {
-      console.log(workerId, ...args);
+      console.log(...args);
       // Do work...
       return Math.random();
     },
