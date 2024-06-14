@@ -1,160 +1,87 @@
-import { assertEquals } from "./dev_deps.ts";
-import { WebWorkerFactory } from "./web_worker.ts";
+import { assert, assertEquals } from "./dev_deps.ts";
+import { workerRpcClientFactory } from "./rpc_client_factory.ts";
 import { WorkerPool } from "./worker_pool.ts";
 
-Deno.test("worker pool produce no duplicate worker id", async () => {
-  const poolOptions = {
-    workerFactory: new WebWorkerFactory(
-      new URL("./test_workers/worker_id.ts", import.meta.url),
+Deno.test("always create worker", async () => {
+  let algoCallCount = 0;
+  const pool = new WorkerPool({
+    workerFactory: workerRpcClientFactory(
+      new URL("./test_workers/double.ts", import.meta.url),
       { type: "module" },
     ),
-    minWorker: 1,
-    maxWorker: 4,
-    maxTasksPerWorker: 1,
-  };
-  const pool = new WorkerPool(poolOptions);
+    algo: (state) => {
+      assertEquals(algoCallCount, state.workers.length);
+      assertEquals(algoCallCount, state.runningTasks.length);
 
-  const promises = [];
-  for (let i = 0; i < poolOptions.maxWorker; i++) {
-    const p = pool.remoteProcedureCall({
-      name: "sleepAndReturnWorkerIdAndArgs",
-      args: i,
-    });
+      algoCallCount++;
+      return null;
+    },
+  });
 
-    promises.push(p);
+  for (let i = 0; i < 10; i++) {
+    const result = await pool.remoteProcedureCall({ name: "double", args: i });
+    assertEquals(result, i * 2);
   }
 
-  const results = await Promise.all(promises);
-
-  assertEquals(
-    results,
-    [
-      { args: [0], workerId: 0 },
-      { args: [1], workerId: 1 },
-      { args: [2], workerId: 2 },
-      { args: [3], workerId: 3 },
-    ],
-  );
-
-  pool.terminate();
+  assertEquals(algoCallCount, 10);
 });
 
-Deno.test("worker pool doesn't create worker if existing worker aren't full", async () => {
-  const poolOptions = {
-    workerFactory: new WebWorkerFactory(
-      new URL("./test_workers/worker_id.ts", import.meta.url),
+Deno.test("create single worker and reuse it", async () => {
+  let algoCallCount = 0;
+  const pool = new WorkerPool({
+    workerFactory: workerRpcClientFactory(
+      new URL("./test_workers/double.ts", import.meta.url),
       { type: "module" },
     ),
-    minWorker: 1,
-    maxWorker: 4,
-    maxTasksPerWorker: 2,
-  };
-  const pool = new WorkerPool(poolOptions);
+    algo: (state) => {
+      algoCallCount++;
+      if (state.workers.length === 0) return null;
 
-  const promises = [];
-  for (let i = 0; i < poolOptions.maxTasksPerWorker; i++) {
-    const p = pool.remoteProcedureCall({
-      name: "sleepAndReturnWorkerIdAndArgs",
-      args: i,
-    });
+      assertEquals(state.workers.length, algoCallCount === 1 ? 0 : 1);
 
-    promises.push(p);
+      return 0;
+    },
+  });
+
+  for (let i = 0; i < 10; i++) {
+    const result = await pool.remoteProcedureCall({ name: "double", args: i });
+    assertEquals(result, i * 2);
   }
 
-  const results = await Promise.all(promises);
-
-  assertEquals(results, [
-    { args: [0], workerId: 0 },
-    { args: [1], workerId: 0 },
-  ]);
-
-  pool.terminate();
+  assertEquals(algoCallCount, 10);
 });
 
-Deno.test("worker pool enqueue task if all workers are full", async () => {
-  const poolOptions = {
-    workerFactory: new WebWorkerFactory(
-      new URL("./test_workers/worker_id.ts", import.meta.url),
+Deno.test("timeout", async () => {
+  const pool = new WorkerPool({
+    workerFactory: workerRpcClientFactory(
+      new URL("./test_workers/sleep.ts", import.meta.url),
       { type: "module" },
     ),
-    minWorker: 1,
-    maxWorker: 2,
-    maxTasksPerWorker: 2,
-  };
-  const pool = new WorkerPool(poolOptions);
+    algo: () => null,
+  });
 
-  const promises = [];
-  for (
-    let i = 0;
-    i < poolOptions.maxWorker * poolOptions.maxTasksPerWorker + 1;
-    i++
-  ) {
-    const p = pool.remoteProcedureCall({
-      name: "sleepAndReturnWorkerIdAndArgs",
-      args: i,
-    });
+  await pool.remoteProcedureCall({ name: "sleep", args: 1000 }, {
+    timeout: 100,
+  }).then(() => assert(false))
+    .catch((err) => assert(err.toString().includes("timed out")));
 
-    promises.push(p);
-
-    // Sleep so worker and task is started.
-    await sleep(10);
-  }
-
-  const results = await Promise.all(promises);
-
-  assertEquals(results, [
-    { args: [0], workerId: 0 },
-    { args: [1], workerId: 0 },
-    { args: [2], workerId: 1 },
-    { args: [3], workerId: 1 },
-    { args: [4], workerId: 0 },
-  ]);
-
-  pool.terminate();
+  await pool.terminate();
 });
 
-Deno.test("worker pool creates up to minWorker workers even if workers aren't full", async () => {
-  const poolOptions = {
-    workerFactory: new WebWorkerFactory(
-      new URL("./test_workers/worker_id.ts", import.meta.url),
+Deno.test("rpc return an error", async () => {
+  const pool = new WorkerPool({
+    workerFactory: workerRpcClientFactory(
+      new URL("./test_workers/error.ts", import.meta.url),
       { type: "module" },
     ),
-    minWorker: 2,
-    maxWorker: 4,
-    maxTasksPerWorker: 2,
-  };
-  const pool = new WorkerPool(poolOptions);
+    algo: () => null,
+  });
 
-  const promises = [];
-  for (
-    let i = 0;
-    i < poolOptions.maxWorker * poolOptions.maxTasksPerWorker;
-    i++
-  ) {
-    const p = pool.remoteProcedureCall({
-      name: "sleepAndReturnWorkerIdAndArgs",
-      args: i,
-    });
+  await pool.remoteProcedureCall({ name: "error", args: null })
+    .then(() => assert(false))
+    .catch((err) =>
+      assert(err.toString().includes("runtime error from worker"))
+    );
 
-    promises.push(p);
-  }
-
-  const results = await Promise.all(promises);
-
-  assertEquals(results, [
-    { args: [0], workerId: 0 },
-    { args: [1], workerId: 1 },
-    { args: [2], workerId: 0 },
-    { args: [3], workerId: 1 },
-    { args: [4], workerId: 2 },
-    { args: [5], workerId: 2 },
-    { args: [6], workerId: 3 },
-    { args: [7], workerId: 3 },
-  ]);
-
-  pool.terminate();
+  await pool.terminate();
 });
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}

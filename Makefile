@@ -12,7 +12,7 @@ fmt-check:
 
 .PHONY: test
 test: lint fmt
-	deno test --allow-read
+	deno test --allow-read --allow-net
 
 .PHONY: tag
 tag/%: test

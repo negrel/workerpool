@@ -3,7 +3,9 @@
  * pool.
  */
 
-export * from "./rpc.ts";
-export * from "./web_worker.ts";
+import { workerMessageHandler } from "./deps.ts";
+
+export * from "./algo.ts";
+export * from "./rpc_client_factory.ts";
 export * from "./worker_pool.ts";
-export * from "./worker.ts";
+export { workerMessageHandler };

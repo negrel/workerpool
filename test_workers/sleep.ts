@@ -1,8 +1,8 @@
-import { workerProcedureHandler } from "../worker.ts";
+import { workerMessageHandler } from "../deps.ts";
 
 declare const self: Worker;
 
-self.onmessage = workerProcedureHandler(
+self.onmessage = workerMessageHandler(
   {
     sleep(ms: number): Promise<void> {
       return new Promise((resolve) => {
